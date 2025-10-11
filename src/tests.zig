@@ -234,3 +234,7 @@ test "rich text append" {
     try std.testing.expectEqual(9, rich_text4.getUtf32Count());
     try std.testing.expectEqual(2, rich_text4.getParagraphsCount()); // abc456\n | 78
 }
+
+comptime {
+    std.testing.refAllDeclsRecursive(skb);
+}

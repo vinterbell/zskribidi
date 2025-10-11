@@ -75,7 +75,7 @@ pub const TextPosition = extern struct {
     pub fn toSkb(self: TextPosition) raw.skb_text_position_t {
         return .{
             .offset = self.offset,
-            .affinity = @as(c_uint, self.affinity),
+            .affinity = @intFromEnum(self.affinity),
         };
     }
 
@@ -98,15 +98,15 @@ pub const TextSelection = extern struct {
 
     pub fn toSkb(self: TextSelection) raw.skb_text_selection_t {
         return .{
-            .start = self.start_pos.toSkb(),
-            .end = self.end_pos.toSkb(),
+            .start_pos = self.start_pos.toSkb(),
+            .end_pos = self.end_pos.toSkb(),
         };
     }
 
     pub fn fromSkb(skb_sel: raw.skb_text_selection_t) TextSelection {
         return .{
-            .start_pos = .fromSkb(skb_sel.start),
-            .end_pos = .fromSkb(skb_sel.end),
+            .start_pos = .fromSkb(skb_sel.start_pos),
+            .end_pos = .fromSkb(skb_sel.end_pos),
         };
     }
 };
@@ -464,10 +464,10 @@ pub const Rect2 = extern struct {
     height: f32,
 
     pub const undef: Rect2 = .{
-        .x = @as(f32, 340282346638528860000000000000000000000) / @as(f32, 2),
-        .y = @as(f32, 340282346638528860000000000000000000000) / @as(f32, 2),
-        .width = -@as(f32, 340282346638528860000000000000000000000),
-        .height = -@as(f32, 340282346638528860000000000000000000000),
+        .x = @as(f32, 340282346638528860000000000000000000000.0) / @as(f32, 2),
+        .y = @as(f32, 340282346638528860000000000000000000000.0) / @as(f32, 2),
+        .width = -@as(f32, 340282346638528860000000000000000000000.0),
+        .height = -@as(f32, 340282346638528860000000000000000000000.0),
     };
 
     pub const zero: Rect2 = .{ .x = 0, .y = 0, .width = 0, .height = 0 };
@@ -640,9 +640,9 @@ pub const TempAlloc = opaque {
 
     pub fn realloc(
         allocator: *TempAlloc,
-        old_ptr: []const u8,
+        old_ptr: []u8,
         new_size: usize,
-    ) std.mem.Allocator.Error![]const u8 {
+    ) std.mem.Allocator.Error![]u8 {
         const ptr = raw.skb_temp_alloc_realloc(
             @ptrCast(allocator),
             @ptrCast(old_ptr.ptr),
@@ -653,7 +653,7 @@ pub const TempAlloc = opaque {
         return ptr_u8[0..new_size];
     }
 
-    pub fn free(allocator: *TempAlloc, ptr: []const u8) void {
+    pub fn free(allocator: *TempAlloc, ptr: []u8) void {
         raw.skb_temp_alloc_free(@ptrCast(allocator), @ptrCast(ptr.ptr));
     }
 };
@@ -773,7 +773,7 @@ pub const Character = enum(c_uint) {
 };
 
 pub const EmojiRunIterator = extern struct {
-    emoji_category: [*:0]u8 = null,
+    emoji_category: ?[*:0]u8 = null,
     count: i32 = 0,
     pos: i32 = 0,
     start: i32 = 0,
@@ -781,23 +781,23 @@ pub const EmojiRunIterator = extern struct {
     has_emoji: bool = false,
 
     pub fn init(range: Range, text: [:0]const u32, emoji_category_buffer: [:0]u8) EmojiRunIterator {
-        return raw.skb_emoji_run_iterator_make(
+        return @bitCast(raw.skb_emoji_run_iterator_make(
             range.toSkb(),
             @ptrCast(text.ptr),
             @ptrCast(emoji_category_buffer),
-        );
+        ));
     }
 
     pub fn next(self: *EmojiRunIterator, range: *Range, range_has_emojis: *bool) bool {
         var r = range.toSkb();
-        var has_emojis: c_int = 0;
+        var has_emojis: bool = false;
         const res = raw.skb_emoji_run_iterator_next(
             @ptrCast(self),
             &r,
             &has_emojis,
         );
         range.* = .{ .start = r.start, .end = r.end };
-        range_has_emojis.* = has_emojis != 0;
+        range_has_emojis.* = has_emojis;
         return res;
     }
 };
@@ -826,11 +826,8 @@ pub fn utf8CodepointOffset(utf8: []const u8, codepoint_offset: i32) i32 {
     );
 }
 
-pub fn utf8NumUnits(utf8: []const u8) i32 {
-    return raw.skb_utf8_num_units(
-        @ptrCast(utf8.ptr),
-        @intCast(utf8.len),
-    );
+pub fn utf8NumUnits(cp: u32) i32 {
+    return raw.skb_utf8_num_units(cp);
 }
 
 pub fn utf8Encode(cp: u32, utf8: []u8) i32 {
@@ -996,40 +993,16 @@ pub const BaselineSet = extern struct {
 
     pub fn fromSkb(skb_baseline_set: raw.skb_baseline_set_t) BaselineSet {
         return .{
-            .baselines = switch (skb_baseline_set.unnamed_0) {
-                .baselines => .{ .array = skb_baseline_set.unnamed_0.baselines },
-                .unnamed_0 => |n| .{ .named = .{
-                    .alphabetic = n.alphabetic,
-                    .ideographic = n.ideographic,
-                    .central = n.central,
-                    .hanging = n.hanging,
-                    .mathematical = n.mathematical,
-                    .middle = n.middle,
-                    .text_bottom = n.text_bottom,
-                    .text_top = n.text_top,
-                } },
-            },
-            .script = skb_baseline_set.script,
+            .baselines = .{ .array = skb_baseline_set.unnamed_0.baselines },
+            .script = .fromInt(skb_baseline_set.script),
             .direction = skb_baseline_set.direction,
         };
     }
 
     pub fn toSkb(self: BaselineSet) raw.skb_baseline_set_t {
         return .{
-            .unnamed_0 = switch (self.baselines) {
-                .array => .{ .baselines = self.baselines.array },
-                .named => |n| .{ .unnamed_0 = .{
-                    .alphabetic = n.alphabetic,
-                    .ideographic = n.ideographic,
-                    .central = n.central,
-                    .hanging = n.hanging,
-                    .mathematical = n.mathematical,
-                    .middle = n.middle,
-                    .text_bottom = n.text_bottom,
-                    .text_top = n.text_top,
-                } },
-            },
-            .script = self.script,
+            .unnamed_0 = .{ .baselines = self.baselines.array },
+            .script = self.script.toInt(),
             .direction = self.direction,
         };
     }
@@ -1101,7 +1074,7 @@ pub const FontCollection = opaque {
             .embolden_y = p.embolden_y,
             .slant = p.slant,
         } else undefined;
-        return @ptrCast(raw.skb_font_collection_add_font_from_data(
+        return @enumFromInt(raw.skb_font_collection_add_font_from_data(
             @ptrCast(self),
             @ptrCast(name.ptr),
             @ptrCast(font_data.ptr),
@@ -1144,7 +1117,7 @@ pub const FontCollection = opaque {
             .embolden_y = p.embolden_y,
             .slant = p.slant,
         } else undefined;
-        return @ptrCast(raw.skb_font_collection_add_hb_font(
+        return @enumFromInt(raw.skb_font_collection_add_hb_font(
             @ptrCast(self),
             @ptrCast(name.ptr),
             @ptrCast(hb_font),
@@ -1189,7 +1162,7 @@ pub const FontCollection = opaque {
     }
 
     pub fn getDefaultFont(self: *FontCollection, font_family: FontFamily) FontHandle {
-        return @ptrCast(raw.skb_font_collection_get_default_font(
+        return @enumFromInt(raw.skb_font_collection_get_default_font(
             @ptrCast(self),
             @intFromEnum(font_family),
         ));
@@ -1449,7 +1422,7 @@ pub const Attribute = extern union {
     }
 
     pub fn attrLang(lang: ?[:0]const u8) Attribute {
-        return .{ .lang = .{ .lang = lang } };
+        return .{ .lang = .{ .lang = if (lang) |l| l.ptr else null } };
     }
 
     pub fn attrFontFamily(family: FontFamily) Attribute {
@@ -1530,9 +1503,8 @@ pub const Attribute = extern union {
         } };
     }
 
-    pub fn attrObjectAlign(alignment: Align, baseline_ratio: f32, align_ref: u8, align_baseline: u8) Attribute {
+    pub fn attrObjectAlign(baseline_ratio: f32, align_ref: u8, align_baseline: u8) Attribute {
         return .{ .object_align = .{
-            .alignment = alignment,
             .baseline_ratio = baseline_ratio,
             .align_ref = align_ref,
             .align_baseline = align_baseline,
@@ -1585,27 +1557,27 @@ pub const AttributeCollection = opaque {
     }
 
     pub fn addSet(self: *AttributeCollection, name: [:0]const u8, attribute_set: AttributeSet) AttributeSetHandle {
-        return raw.skb_attribute_collection_add_set(
+        return @enumFromInt(raw.skb_attribute_collection_add_set(
             @ptrCast(self),
             @ptrCast(name.ptr),
             @bitCast(attribute_set),
-        );
+        ));
     }
 
     pub fn addSetWithGroup(self: *AttributeCollection, name: [:0]const u8, group_name: [:0]const u8, attribute_set: AttributeSet) AttributeSetHandle {
-        return raw.skb_attribute_collection_add_set_with_group(
+        return @enumFromInt(raw.skb_attribute_collection_add_set_with_group(
             @ptrCast(self),
             @ptrCast(name.ptr),
             @ptrCast(group_name.ptr),
             @bitCast(attribute_set),
-        );
+        ));
     }
 
     pub fn findSetByName(self: *const AttributeCollection, name: [:0]const u8) AttributeSetHandle {
-        return raw.skb_attribute_collection_find_set_by_name(
+        return @enumFromInt(raw.skb_attribute_collection_find_set_by_name(
             @ptrCast(self),
             @ptrCast(name.ptr),
-        );
+        ));
     }
 
     pub fn getSet(self: *const AttributeCollection, handle: AttributeSetHandle) AttributeSet {
@@ -1628,6 +1600,24 @@ pub const AttributeSet = extern struct {
     attributes_count: i32 = 0,
     set_handle: AttributeSetHandle = .none,
     parent_set: ?*const AttributeSet = null,
+
+    pub fn toSkb(self: AttributeSet) raw.skb_attribute_set_t {
+        return .{
+            .attributes = if (self.attributes) |_| @ptrCast(self.attributes) else null,
+            .attributes_count = self.attributes_count,
+            .set_handle = @intFromEnum(self.set_handle),
+            .parent_set = if (self.parent_set) |_| @ptrCast(self.parent_set) else null,
+        };
+    }
+
+    pub fn fromSkb(skb_set: raw.skb_attribute_set_t) AttributeSet {
+        return .{
+            .attributes = if (skb_set.attributes) |_| @ptrCast(skb_set.attributes) else null,
+            .attributes_count = skb_set.attributes_count,
+            .set_handle = @enumFromInt(skb_set.set_handle),
+            .parent_set = if (skb_set.parent_set) |_| @ptrCast(skb_set.parent_set) else null,
+        };
+    }
 
     pub fn initAttributes(attributes: []const Attribute) AttributeSet {
         return .{
@@ -1727,7 +1717,7 @@ pub const AttributeSet = extern struct {
             @ptrCast(collection),
         );
         return .{
-            .color = attr.color,
+            .color = .fromSkb(attr.color),
         };
     }
 
@@ -1905,7 +1895,7 @@ pub const Canvas = opaque {
     }
 
     pub fn fillSolidColor(self: *Canvas, color: Color) void {
-        raw.skb_canvas_fill_solid_color(@ptrCast(self), color);
+        raw.skb_canvas_fill_solid_color(@ptrCast(self), color.toSkb());
     }
 
     pub fn fillLinearGradient(
@@ -2229,7 +2219,7 @@ pub const IconBuilder = extern struct {
     }
 
     pub fn fillColor(self: *IconBuilder, color: Color) void {
-        raw.skb_icon_builder_fill_color(@ptrCast(self), color);
+        raw.skb_icon_builder_fill_color(@ptrCast(self), color.toSkb());
     }
 
     pub fn fillLinearGradient(self: *IconBuilder, p0: Vec2, p1: Vec2, xform: Mat2, spread: GradientSpread, stops: []const ColorStop) void {
@@ -2239,7 +2229,7 @@ pub const IconBuilder = extern struct {
             p1.toSkb(),
             xform.toSkb(),
             @intFromEnum(spread),
-            @ptrCast(stops.ptr),
+            @ptrCast(@constCast(stops.ptr)),
             @intCast(stops.len),
         );
     }
@@ -2252,7 +2242,7 @@ pub const IconBuilder = extern struct {
             radius,
             xform.toSkb(),
             @intFromEnum(spread),
-            @ptrCast(stops.ptr),
+            @ptrCast(@constCast(stops.ptr)),
             @intCast(stops.len),
         );
     }
@@ -2429,9 +2419,9 @@ pub const ContentRun = extern struct {
     }
 };
 
-pub const LayoutLineFlags = packed struct(c_uint) {
+pub const LayoutLineFlags = packed struct(u8) {
     is_truncated: bool = false,
-    _: u31 = undefined,
+    _: u7 = undefined,
 };
 
 pub const LayoutLine = extern struct {
@@ -2881,19 +2871,19 @@ pub const Layout = opaque {
     }
 
     pub fn getSelectionOrderedStart(self: *const Layout, selection: TextSelection) TextPosition {
-        return .fromSkb(raw.skb_layout_get_selection_ordered_start(@ptrCast(self), @intFromEnum(selection)));
+        return .fromSkb(raw.skb_layout_get_selection_ordered_start(@ptrCast(self), selection.toSkb()));
     }
 
     pub fn getSelectionOrderedEnd(self: *const Layout, selection: TextSelection) TextPosition {
-        return .fromSkb(raw.skb_layout_get_selection_ordered_end(@ptrCast(self), @intFromEnum(selection)));
+        return .fromSkb(raw.skb_layout_get_selection_ordered_end(@ptrCast(self), selection.toSkb()));
     }
 
     pub fn getSelectionTextOffsetRange(self: *const Layout, selection: TextSelection) Range {
-        return .fromSkb(raw.skb_layout_get_selection_text_offset_range(@ptrCast(self), @intFromEnum(selection)));
+        return .fromSkb(raw.skb_layout_get_selection_text_offset_range(@ptrCast(self), selection.toSkb()));
     }
 
     pub fn getSelectionCount(self: *const Layout, selection: TextSelection) i32 {
-        return raw.skb_layout_get_selection_count(@ptrCast(self), @intFromEnum(selection));
+        return raw.skb_layout_get_selection_count(@ptrCast(self), selection.toSkb());
     }
 
     pub fn getSelectionBounds(
@@ -2904,7 +2894,7 @@ pub const Layout = opaque {
     ) void {
         raw.skb_layout_get_selection_bounds(
             @ptrCast(self),
-            @intFromEnum(selection),
+            selection.toSkb(),
             @ptrCast(callback),
             context,
         );
@@ -2920,7 +2910,7 @@ pub const Layout = opaque {
         raw.skb_layout_get_selection_bounds_with_offset(
             @ptrCast(self),
             offset_y,
-            @intFromEnum(selection),
+            selection.toSkb(),
             @ptrCast(callback),
             context,
         );
@@ -3018,6 +3008,14 @@ pub const Script = enum(u8) {
     pub fn fromIso15924Tag(tag: Iso15924Tag) Script {
         const script = raw.skb_script_from_iso15924_tag(tag);
         return @enumFromInt(script);
+    }
+
+    pub fn toInt(self: Script) u8 {
+        return @intFromEnum(self);
+    }
+
+    pub fn fromInt(value: u8) Script {
+        return @enumFromInt(value);
     }
 };
 
@@ -3170,7 +3168,7 @@ pub const RichText = opaque {
         return raw.skb_rich_text_get_attribute_count(
             @ptrCast(self),
             text_range.toSkb(),
-            attribute_kind,
+            @intFromEnum(attribute_kind),
         );
     }
 
@@ -3235,7 +3233,7 @@ pub const Editor = opaque {
         raw.skb_editor_set_text_utf32(@ptrCast(self), @ptrCast(temp_alloc), @ptrCast(utf32.ptr), @intCast(utf32.len));
     }
 
-    pub fn setText(self: *Editor, temp_alloc: *TempAlloc, text: ?*const Text) void {
+    pub fn setText(self: *Editor, temp_alloc: *TempAlloc, text: ?*Text) void {
         raw.skb_editor_set_text(@ptrCast(self), @ptrCast(temp_alloc), @ptrCast(text));
     }
 
@@ -3263,31 +3261,31 @@ pub const Editor = opaque {
         );
     }
 
-    pub fn getText(self: *const Editor) ?*const Text {
-        return @ptrCast(raw.skb_editor_get_text(@ptrCast(self)));
+    pub fn getText(self: *const Editor, text: *Text) void {
+        raw.skb_editor_get_text(@ptrCast(self), @ptrCast(text));
     }
 
-    pub fn getParagraphCount(self: *const Editor) i32 {
+    pub fn getParagraphCount(self: *Editor) i32 {
         return raw.skb_editor_get_paragraph_count(@ptrCast(self));
     }
 
-    pub fn getParagraphLayout(self: *const Editor, index: i32) ?*const Layout {
+    pub fn getParagraphLayout(self: *Editor, index: i32) ?*const Layout {
         return @ptrCast(raw.skb_editor_get_paragraph_layout(@ptrCast(self), index));
     }
 
-    pub fn getParagraphOffsetY(self: *const Editor, index: i32) f32 {
+    pub fn getParagraphOffsetY(self: *Editor, index: i32) f32 {
         return raw.skb_editor_get_paragraph_offset_y(@ptrCast(self), index);
     }
 
-    pub fn getParagraphText(self: *const Editor, index: i32) ?*const Text {
+    pub fn getParagraphText(self: *Editor, index: i32) ?*const Text {
         return @ptrCast(raw.skb_editor_get_paragraph_text(@ptrCast(self), index));
     }
 
-    pub fn getParagraphTextOffset(self: *const Editor, index: i32) i32 {
+    pub fn getParagraphTextOffset(self: *Editor, index: i32) i32 {
         return raw.skb_editor_get_paragraph_text_offset(@ptrCast(self), index);
     }
 
-    pub fn getParams(self: *const Editor) *const EditorParams {
+    pub fn getParams(self: *Editor) *const EditorParams {
         return @ptrCast(raw.skb_editor_get_params(@ptrCast(self)));
     }
 
@@ -3324,58 +3322,58 @@ pub const Editor = opaque {
     }
 
     pub fn select(self: *Editor, selection: TextSelection) void {
-        raw.skb_editor_select(@ptrCast(self), @intFromEnum(selection));
+        raw.skb_editor_select(@ptrCast(self), selection.toSkb());
     }
 
-    pub fn getCurrentSelection(self: *const Editor) TextSelection {
-        return @enumFromInt(raw.skb_editor_get_current_selection(@ptrCast(self)));
+    pub fn getCurrentSelection(self: *Editor) TextSelection {
+        return .fromSkb(raw.skb_editor_get_current_selection(@ptrCast(self)));
     }
 
     pub fn getSelectionTextOffsetRange(self: *const Editor, selection: TextSelection) Range {
-        return .fromSkb(raw.skb_editor_get_selection_text_offset_range(@ptrCast(self), @intFromEnum(selection)));
+        return .fromSkb(raw.skb_editor_get_selection_text_offset_range(@ptrCast(self), selection.toSkb()));
     }
 
     pub fn getSelectionCount(self: *const Editor, selection: TextSelection) i32 {
-        return raw.skb_editor_get_selection_count(@ptrCast(self), @intFromEnum(selection));
+        return raw.skb_editor_get_selection_count(@ptrCast(self), selection.toSkb());
     }
 
     pub fn getSelectionBounds(self: *const Editor, selection: TextSelection, callback: *const SelectionRectFunc, context: ?*anyopaque) void {
         raw.skb_editor_get_selection_bounds(
             @ptrCast(self),
-            @intFromEnum(selection),
+            selection.toSkb(),
             @ptrCast(callback),
             context,
         );
     }
 
     pub fn getSelectionTextUtf8Count(self: *const Editor, selection: TextSelection) i32 {
-        return raw.skb_editor_get_selection_text_utf8_count(@ptrCast(self), @intFromEnum(selection));
+        return raw.skb_editor_get_selection_text_utf8_count(@ptrCast(self), selection.toSkb());
     }
 
     pub fn getSelectionTextUtf8(self: *const Editor, selection: TextSelection, utf8: []u8) i32 {
         return raw.skb_editor_get_selection_text_utf8(
             @ptrCast(self),
-            @intFromEnum(selection),
+            selection.toSkb(),
             @ptrCast(utf8.ptr),
             @intCast(utf8.len),
         );
     }
 
     pub fn getSelectionTextUtf32Count(self: *const Editor, selection: TextSelection) i32 {
-        return raw.skb_editor_get_selection_text_utf32_count(@ptrCast(self), @intFromEnum(selection));
+        return raw.skb_editor_get_selection_text_utf32_count(@ptrCast(self), selection.toSkb());
     }
 
     pub fn getSelectionTextUtf32(self: *const Editor, selection: TextSelection, utf32: []u32) i32 {
         return raw.skb_editor_get_selection_text_utf32(
             @ptrCast(self),
-            @intFromEnum(selection),
+            selection.toSkb(),
             @ptrCast(utf32.ptr),
             @intCast(utf32.len),
         );
     }
 
-    pub fn getSelectionRichText(self: *const Editor, selection: TextSelection) ?*const RichText {
-        return @ptrCast(raw.skb_editor_get_selection_rich_text(@ptrCast(self), @intFromEnum(selection)));
+    pub fn getSelectionRichText(self: *const Editor, selection: TextSelection, rich: *RichText) void {
+        raw.skb_editor_get_selection_rich_text(@ptrCast(self), selection.toSkb(), @ptrCast(rich));
     }
 
     pub fn processMouseClick(self: *Editor, x: f32, y: f32, mods: u32, time: f64) void {
@@ -3441,7 +3439,7 @@ pub const Editor = opaque {
         raw.skb_editor_set_attribute(
             @ptrCast(self),
             @ptrCast(temp_alloc),
-            @intFromEnum(selection),
+            selection.toSkb(),
             @bitCast(attribute),
         );
     }
@@ -3450,21 +3448,25 @@ pub const Editor = opaque {
         raw.skb_editor_clear_attribute(
             @ptrCast(self),
             @ptrCast(temp_alloc),
-            @intFromEnum(selection),
+            selection.toSkb(),
             @bitCast(attribute),
         );
     }
 
     pub fn clearAllAttributes(self: *Editor, temp_alloc: *TempAlloc, selection: TextSelection) void {
-        raw.skb_editor_clear_all_attributes(@ptrCast(self), @ptrCast(temp_alloc), @intFromEnum(selection));
+        raw.skb_editor_clear_all_attributes(@ptrCast(self), @ptrCast(temp_alloc), selection.toSkb());
     }
 
     pub fn getAttributeCount(self: *const Editor, selection: TextSelection, attribute_kind: AttributeType) i32 {
-        return raw.skb_editor_get_attribute_count(@ptrCast(self), @intFromEnum(selection), attribute_kind);
+        return raw.skb_editor_get_attribute_count(
+            @ptrCast(self),
+            selection.toSkb(),
+            @intFromEnum(attribute_kind),
+        );
     }
 
-    pub fn getActiveAttributesCount(self: *const Editor) i32 {
-        return raw.skb_editor_get_active_attributes_count(@ptrCast(self));
+    pub fn getActiveAttributesCount(self: *const Editor) usize {
+        return @intCast(raw.skb_editor_get_active_attributes_count(@ptrCast(self)));
     }
 
     pub fn getActiveAttributes(self: *const Editor) []const Attribute {
@@ -3473,7 +3475,7 @@ pub const Editor = opaque {
         return @ptrCast(ptr[0..count]);
     }
 
-    pub fn canUndo(self: *const Editor) bool {
+    pub fn canUndo(self: *Editor) bool {
         return raw.skb_editor_can_undo(@ptrCast(self));
     }
 
@@ -3481,7 +3483,7 @@ pub const Editor = opaque {
         raw.skb_editor_undo(@ptrCast(self), @ptrCast(temp_alloc));
     }
 
-    pub fn canRedo(self: *const Editor) bool {
+    pub fn canRedo(self: *Editor) bool {
         return raw.skb_editor_can_redo(@ptrCast(self));
     }
 
@@ -3594,9 +3596,8 @@ pub const Rasterizer = opaque {
         return RasterizerConfig.fromSkb(raw.skb_rasterizer_get_config(@ptrCast(self)));
     }
 
-    pub fn getGlyphDimensions(self: *const Rasterizer, glyph_id: u32, font: *const Font, font_size: f32, padding: i32) Rect2i {
+    pub fn getGlyphDimensions(glyph_id: u32, font: *const Font, font_size: f32, padding: i32) Rect2i {
         return .fromSkb(raw.skb_rasterizer_get_glyph_dimensions(
-            @ptrCast(self),
             glyph_id,
             @ptrCast(font),
             font_size,
@@ -3635,8 +3636,8 @@ pub const Rasterizer = opaque {
         font: *const Font,
         font_size: f32,
         alpha_mode: RasterizerAlphaMode,
-        offset_x: f32,
-        offset_y: f32,
+        offset_x: i32,
+        offset_y: i32,
         target: *Image,
     ) bool {
         return raw.skb_rasterizer_draw_color_glyph(
@@ -3777,7 +3778,7 @@ pub const ImageAtlas = opaque {
         raw.skb_image_atlas_destroy(@ptrCast(self));
     }
 
-    pub fn getConfig(self: *const ImageAtlas) ImageAtlasConfig {
+    pub fn getConfig(self: *ImageAtlas) ImageAtlasConfig {
         return @bitCast(raw.skb_image_atlas_get_config(@ptrCast(self)));
     }
 
@@ -3785,15 +3786,15 @@ pub const ImageAtlas = opaque {
         raw.skb_image_atlas_set_create_texture_callback(@ptrCast(self), @ptrCast(create_texture_callback), context);
     }
 
-    pub fn getTextureCount(self: *const ImageAtlas) i32 {
+    pub fn getTextureCount(self: *ImageAtlas) i32 {
         return raw.skb_image_atlas_get_texture_count(@ptrCast(self));
     }
 
-    pub fn getTexture(self: *const ImageAtlas, texture_idx: i32) ?*const Image {
+    pub fn getTexture(self: *ImageAtlas, texture_idx: i32) ?*const Image {
         return @ptrCast(raw.skb_image_atlas_get_texture(@ptrCast(self), texture_idx));
     }
 
-    pub fn getTextureDirtyBounds(self: *const ImageAtlas, texture_idx: i32) Rect2i {
+    pub fn getTextureDirtyBounds(self: *ImageAtlas, texture_idx: i32) Rect2i {
         return .fromSkb(raw.skb_image_atlas_get_texture_dirty_bounds(@ptrCast(self), texture_idx));
     }
 
@@ -3805,13 +3806,13 @@ pub const ImageAtlas = opaque {
         raw.skb_image_atlas_set_texture_user_data(@ptrCast(self), texture_idx, user_data);
     }
 
-    pub fn getTextureUserData(self: *const ImageAtlas, texture_idx: i32) usize {
+    pub fn getTextureUserData(self: *ImageAtlas, texture_idx: i32) usize {
         return raw.skb_image_atlas_get_texture_user_data(@ptrCast(self), texture_idx);
     }
 
     pub const DebugRectIteratorFunc = fn (x: i32, y: i32, width: i32, height: i32, context: ?*anyopaque) callconv(.c) void;
 
-    pub fn debugIterateFreeRects(self: *const ImageAtlas, texture_idx: i32, callback: *const DebugRectIteratorFunc, context: ?*anyopaque) void {
+    pub fn debugIterateFreeRects(self: *ImageAtlas, texture_idx: i32, callback: *const DebugRectIteratorFunc, context: ?*anyopaque) void {
         raw.skb_image_atlas_debug_iterate_free_rects(
             @ptrCast(self),
             texture_idx,
@@ -3820,7 +3821,7 @@ pub const ImageAtlas = opaque {
         );
     }
 
-    pub fn debugIterateUsedRects(self: *const ImageAtlas, texture_idx: i32, callback: *const DebugRectIteratorFunc, context: ?*anyopaque) void {
+    pub fn debugIterateUsedRects(self: *ImageAtlas, texture_idx: i32, callback: *const DebugRectIteratorFunc, context: ?*anyopaque) void {
         raw.skb_image_atlas_debug_iterate_used_rects(
             @ptrCast(self),
             texture_idx,
@@ -3829,7 +3830,7 @@ pub const ImageAtlas = opaque {
         );
     }
 
-    pub fn debugGetTexturePrevDirtyBounds(self: *const ImageAtlas, texture_idx: i32) Rect2i {
+    pub fn debugGetTexturePrevDirtyBounds(self: *ImageAtlas, texture_idx: i32) Rect2i {
         return .fromSkb(raw.skb_image_atlas_debug_get_texture_prev_dirty_bounds(@ptrCast(self), texture_idx));
     }
 
@@ -4133,11 +4134,11 @@ pub const RichLayout = opaque {
     }
 
     pub fn destroy(self: *RichLayout) void {
-        raw.skb_rich_layout_destroy(self);
+        raw.skb_rich_layout_destroy(@ptrCast(self));
     }
 
     pub fn reset(self: *RichLayout) void {
-        raw.skb_rich_layout_reset(self);
+        raw.skb_rich_layout_reset(@ptrCast(self));
     }
 
     pub fn getParagraphsCount(self: *const RichLayout) i32 {
@@ -4162,7 +4163,7 @@ pub const RichLayout = opaque {
         params: *const LayoutParams,
         rich_text: *const RichText,
         ime_text_offset: i32,
-        ime_text: *const Text,
+        ime_text: *Text,
     ) void {
         raw.skb_rich_layout_update(
             @ptrCast(self),
@@ -4181,14 +4182,14 @@ pub const RichLayout = opaque {
         text: *const RichText,
         change: RichTextChange,
         ime_text_offset: i32,
-        ime_text: *const Text,
+        ime_text: *Text,
     ) void {
         raw.skb_rich_layout_update_with_change(
             @ptrCast(self),
             @ptrCast(temp_alloc),
             @ptrCast(params),
             @ptrCast(text),
-            @intFromEnum(change),
+            change.toSkb(),
             ime_text_offset,
             @ptrCast(ime_text),
         );
@@ -4211,7 +4212,10 @@ pub const RichLayout = opaque {
     }
 
     pub fn textSelectionToRange(self: *const RichLayout, selection: TextSelection) Range {
-        return .fromSkb(raw.skb_rich_layout_text_selection_to_range(@ptrCast(self), @intFromEnum(selection)));
+        return .fromSkb(raw.skb_rich_layout_text_selection_to_range(
+            @ptrCast(self),
+            selection.toSkb(),
+        ));
     }
 
     pub fn getVisualCaret(self: *const RichLayout, pos: TextPosition) VisualCaret {
@@ -4221,7 +4225,7 @@ pub const RichLayout = opaque {
     pub fn getSelectionBounds(self: *const RichLayout, selection: TextSelection, callback: *const SelectionRectFunc, context: ?*anyopaque) void {
         raw.skb_rich_layout_get_selection_bounds(
             @ptrCast(self),
-            @intFromEnum(selection),
+            selection.toSkb(),
             @ptrCast(callback),
             context,
         );

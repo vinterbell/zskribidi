@@ -4,6 +4,6 @@ pub const bindings = @import("bindings.zig");
 
 const tests = @import("tests.zig");
 
-comptime {
+test "bindings" {
     _ = tests;
 }
