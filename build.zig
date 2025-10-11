@@ -3,6 +3,7 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const should_link_libcpp = !(target.result.abi == .msvc);
 
     const harfbuzz = b.dependency("harfbuzz", .{});
     const lib_harfbuzz = b.addLibrary(.{
@@ -11,7 +12,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
             .link_libc = true,
-            .link_libcpp = true,
+            .link_libcpp = should_link_libcpp,
         }),
     });
     lib_harfbuzz.addCSourceFile(.{
