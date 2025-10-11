@@ -1,6 +1,6 @@
 # zskribidi
 
-Port of [skribidi](https://github.com/memononen/Skribidi) to Zig, building all dependencies with zig.
+Port of [skribidi](https://github.com/memononen/Skribidi) to Zig, building all dependencies with zig. The bindings are very new so please report any issues you find.
 
 ## Building
 Requires Zig 0.15.1 or later.
@@ -15,8 +15,8 @@ zig build test
 ```
 
 ## TODO
-- [ ] Create zigified bindings
-- [ ] Port tests to zig
+- [X] Create zigified bindings
+- [ ] Port tests to zig (some done now)
 - [ ] Port examples to zig
 
 ## License
