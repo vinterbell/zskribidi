@@ -136,6 +136,10 @@ pub fn build(b: *std.Build) void {
     lib_skribidi.addIncludePath(upstream.path("include"));
     lib_skribidi.installHeadersDirectory(upstream.path("include"), "", .{});
 
+    b.installArtifact(lib_harfbuzz);
+    b.installArtifact(lib_sheenbidi);
+    b.installArtifact(lib_libunibreak);
+    b.installArtifact(lib_budouxc);
     b.installArtifact(lib_skribidi);
 
     const raw = b.addModule("rawskribidi", .{
