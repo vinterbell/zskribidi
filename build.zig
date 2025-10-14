@@ -142,18 +142,10 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(lib_budouxc);
     b.installArtifact(lib_skribidi);
 
-    const raw = b.addModule("rawskribidi", .{
-        .root_source_file = b.path("src/raw.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-
     const mod = b.addModule("zskribidi", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
-        .imports = &.{
-            .{ .name = "raw", .module = raw },
-        },
+        .imports = &.{},
     });
     mod.linkLibrary(lib_skribidi);
 

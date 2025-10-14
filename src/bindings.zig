@@ -1,7 +1,7 @@
 const std = @import("std");
-const raw = @import("raw");
+const raw = @import("raw.zig");
 
-pub const Align = enum(c_uint) {
+pub const Align = enum(u8) {
     start = raw.SKB_ALIGN_START,
     center = raw.SKB_ALIGN_CENTER,
     end = raw.SKB_ALIGN_END,
@@ -9,6 +9,14 @@ pub const Align = enum(c_uint) {
     right = raw.SKB_ALIGN_RIGHT,
     top = raw.SKB_ALIGN_TOP,
     bottom = raw.SKB_ALIGN_BOTTOM,
+
+    pub fn calcOffset(self: Align, item_size: f32, container_size: f32) f32 {
+        return raw.skb_calc_align_offset(@intFromEnum(self), item_size, container_size);
+    }
+
+    pub fn getDirectionalAlign(self: Align, is_rtl: bool) Align {
+        return @enumFromInt(raw.skb_get_directional_align(is_rtl, @intFromEnum(self)));
+    }
 };
 
 pub const TextWrap = enum(c_uint) {
@@ -28,7 +36,7 @@ pub const VerticalTrim = enum(c_uint) {
     cap_to_baseline = raw.SKB_VERTICAL_TRIM_CAP_TO_BASELINE,
 };
 
-pub const LineHeight = enum(c_uint) {
+pub const LineHeight = enum(u8) {
     normal = raw.SKB_LINE_HEIGHT_NORMAL,
     metrics_relative = raw.SKB_LINE_HEIGHT_METRICS_RELATIVE,
     font_size_relative = raw.SKB_LINE_HEIGHT_FONT_SIZE_RELATIVE,
@@ -43,15 +51,15 @@ pub const ObjectAlignReference = enum(c_uint) {
     text_after_or_before = raw.SKB_OBJECT_ALIGN_TEXT_AFTER_OR_BEFORE,
 };
 
-pub const DecorationStyle = enum(c_uint) {
+pub const DecorationStyle = enum(u8) {
     solid = raw.SKB_DECORATION_STYLE_SOLID,
-    double_ = raw.SKB_DECORATION_STYLE_DOUBLE,
+    double = raw.SKB_DECORATION_STYLE_DOUBLE,
     dotted = raw.SKB_DECORATION_STYLE_DOTTED,
     dashed = raw.SKB_DECORATION_STYLE_DASHED,
     wavy = raw.SKB_DECORATION_STYLE_WAVY,
 };
 
-pub const DecorationPosition = enum(c_uint) {
+pub const DecorationPosition = enum(u8) {
     underline = raw.SKB_DECORATION_UNDERLINE,
     bottomline = raw.SKB_DECORATION_BOTTOMLINE,
     overline = raw.SKB_DECORATION_OVERLINE,
@@ -85,6 +93,10 @@ pub const TextPosition = extern struct {
             .affinity = @enumFromInt(skb_pos.affinity),
         };
     }
+
+    comptime {
+        std.debug.assert(@sizeOf(TextPosition) == @sizeOf(raw.skb_text_position_t));
+    }
 };
 
 pub const TextSelection = extern struct {
@@ -108,6 +120,10 @@ pub const TextSelection = extern struct {
             .start_pos = .fromSkb(skb_sel.start_pos),
             .end_pos = .fromSkb(skb_sel.end_pos),
         };
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(TextSelection) == @sizeOf(raw.skb_text_selection_t));
     }
 };
 
@@ -137,6 +153,10 @@ pub const ParagraphPosition = extern struct {
             .global_text_offset = skb_pos.global_text_offset,
         };
     }
+
+    comptime {
+        std.debug.assert(@sizeOf(ParagraphPosition) == @sizeOf(raw.skb_paragraph_position_t));
+    }
 };
 
 pub const ParagraphRange = extern struct {
@@ -160,6 +180,10 @@ pub const ParagraphRange = extern struct {
             .start_pos = .fromSkb(skb_range.start_pos),
             .end_pos = .fromSkb(skb_range.end_pos),
         };
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(ParagraphRange) == @sizeOf(raw.skb_paragraph_range_t));
     }
 };
 
@@ -204,6 +228,10 @@ pub const Range = extern struct {
             .end = skb_range.end,
         };
     }
+
+    comptime {
+        std.debug.assert(@sizeOf(Range) == @sizeOf(raw.skb_range_t));
+    }
 };
 
 pub const Color = extern struct {
@@ -217,7 +245,7 @@ pub const Color = extern struct {
     }
 
     pub fn equals(self: Color, other: Color) bool {
-        return self.toSkb().equals(other.toSkb());
+        return raw.skb_color_equals(self.toSkb(), other.toSkb());
     }
 
     pub fn mulAlpha(self: Color, alpha: u8) Color {
@@ -281,6 +309,10 @@ pub const Color = extern struct {
     }
 
     // TODO: make fill
+
+    comptime {
+        std.debug.assert(@sizeOf(Color) == @sizeOf(raw.skb_color_t));
+    }
 };
 
 pub const Image = extern struct {
@@ -366,6 +398,10 @@ pub const Vec2 = extern struct {
 
     pub fn toSkb(self: Vec2) raw.skb_vec2_t {
         return .{ .x = self.x, .y = self.y };
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(Vec2) == @sizeOf(raw.skb_vec2_t));
     }
 };
 
@@ -455,6 +491,10 @@ pub const Mat2 = extern struct {
             .dy = self.dy,
         };
     }
+
+    comptime {
+        std.debug.assert(@sizeOf(Mat2) == @sizeOf(raw.skb_mat2_t));
+    }
 };
 
 pub const Rect2 = extern struct {
@@ -521,6 +561,10 @@ pub const Rect2 = extern struct {
             .height = self.height,
         };
     }
+
+    comptime {
+        std.debug.assert(@sizeOf(Rect2) == @sizeOf(raw.skb_rect2_t));
+    }
 };
 
 pub const Rect2i = extern struct {
@@ -576,6 +620,10 @@ pub const Rect2i = extern struct {
             .width = self.width,
             .height = self.height,
         };
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(Rect2i) == @sizeOf(raw.skb_rect2i_t));
     }
 };
 
@@ -685,6 +733,10 @@ pub const ListItem = extern struct {
     next: i32,
 
     pub const init: ListItem = .{ .prev = raw.SKB_INVALID_INDEX, .next = raw.SKB_INVALID_INDEX };
+
+    comptime {
+        std.debug.assert(@sizeOf(ListItem) == @sizeOf(raw.skb_list_item_t));
+    }
 };
 
 pub const List = extern struct {
@@ -700,9 +752,13 @@ pub const List = extern struct {
     pub fn moveToFront(self: *List, item_idx: i32, get_item: *const raw.skb_list_get_item_func_t, context: ?*anyopaque) void {
         raw.skb_list_move_to_front(@ptrCast(self), item_idx, get_item, context);
     }
+
+    comptime {
+        std.debug.assert(@sizeOf(List) == @sizeOf(raw.skb_list_t));
+    }
 };
 
-pub const TextDirection = enum(c_uint) {
+pub const TextDirection = enum(u8) {
     auto = raw.SKB_DIRECTION_AUTO,
     ltr = raw.SKB_DIRECTION_LTR,
     rtl = raw.SKB_DIRECTION_RTL,
@@ -799,6 +855,10 @@ pub const EmojiRunIterator = extern struct {
         range.* = .{ .start = r.start, .end = r.end };
         range_has_emojis.* = has_emojis;
         return res;
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(EmojiRunIterator) == @sizeOf(raw.skb_emoji_run_iterator_t));
     }
 };
 
@@ -962,6 +1022,10 @@ pub const FontMetrics = extern struct {
             .strikeout_size = skb_metrics.strikeout_size,
         };
     }
+
+    comptime {
+        std.debug.assert(@sizeOf(FontMetrics) == @sizeOf(raw.skb_font_metrics_t));
+    }
 };
 
 pub const BaselineSet = extern struct {
@@ -983,19 +1047,19 @@ pub const BaselineSet = extern struct {
 
     baselines: Baselines,
     script: Script,
-    direction: u8,
+    direction: TextDirection,
 
     pub const init: BaselineSet = .{
         .baselines = .{ .array = @splat(0) },
         .script = .none,
-        .direction = 0,
+        .direction = .ltr,
     };
 
     pub fn fromSkb(skb_baseline_set: raw.skb_baseline_set_t) BaselineSet {
         return .{
             .baselines = .{ .array = skb_baseline_set.unnamed_0.baselines },
             .script = .fromInt(skb_baseline_set.script),
-            .direction = skb_baseline_set.direction,
+            .direction = @enumFromInt(skb_baseline_set.direction),
         };
     }
 
@@ -1003,8 +1067,12 @@ pub const BaselineSet = extern struct {
         return .{
             .unnamed_0 = .{ .baselines = self.baselines.array },
             .script = self.script.toInt(),
-            .direction = self.direction,
+            .direction = @intFromEnum(self.direction),
         };
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(BaselineSet) == @sizeOf(raw.skb_baseline_set_t));
     }
 };
 
@@ -1018,12 +1086,27 @@ pub const CaretMetrics = extern struct {
             .slope = skb_caret.slope,
         };
     }
+
+    pub fn toSkb(self: CaretMetrics) raw.skb_caret_metrics_t {
+        return .{
+            .offset = self.offset,
+            .slope = self.slope,
+        };
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(CaretMetrics) == @sizeOf(raw.skb_caret_metrics_t));
+    }
 };
 
 pub const FontCreateParams = extern struct {
     embolden_x: f32,
     embolden_y: f32,
     slant: f32,
+
+    comptime {
+        std.debug.assert(@sizeOf(FontCreateParams) == @sizeOf(raw.skb_font_create_params_t));
+    }
 };
 
 pub const FontHandle = enum(u32) {
@@ -1247,109 +1330,248 @@ pub const FontCollection = opaque {
 pub const AttributeTextDirection = extern struct {
     kind: AttributeType = .text_direction,
     direction: TextDirection = .auto,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeTextDirection) == @sizeOf(raw.skb_attribute_text_direction_t));
+    }
 };
 
 pub const AttributeLang = extern struct {
     kind: AttributeType = .lang,
     lang: ?[*:0]const u8 = null,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeLang) == @sizeOf(raw.skb_attribute_lang_t));
+    }
 };
 
 pub const AttributeFontFamily = extern struct {
     kind: AttributeType = .font_family,
     family: FontFamily = .default,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeFontFamily) == @sizeOf(raw.skb_attribute_font_family_t));
+    }
 };
 
 pub const AttributeFontSize = extern struct {
     kind: AttributeType = .font_size,
     size: f32 = 0,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeFontSize) == @sizeOf(raw.skb_attribute_font_size_t));
+    }
 };
 
 pub const AttributeFontWeight = extern struct {
     kind: AttributeType = .font_weight,
     weight: Weight = .normal,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeFontWeight) == @sizeOf(raw.skb_attribute_font_weight_t));
+    }
 };
 
 pub const AttributeFontStyle = extern struct {
     kind: AttributeType = .font_style,
     style: Style = .normal,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeFontStyle) == @sizeOf(raw.skb_attribute_font_style_t));
+    }
 };
 
 pub const AttributeFontStretch = extern struct {
     kind: AttributeType = .font_stretch,
     stretch: Stretch = .normal,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeFontStretch) == @sizeOf(raw.skb_attribute_font_stretch_t));
+    }
 };
 
 pub const AttributeFontFeature = extern struct {
     kind: AttributeType = .font_feature,
     tag: u32 = 0,
     value: u32 = 0,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeFontFeature) == @sizeOf(raw.skb_attribute_font_feature_t));
+    }
 };
 
 pub const AttributeLetterSpacing = extern struct {
     kind: AttributeType = .letter_spacing,
     spacing: f32 = 0,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeLetterSpacing) == @sizeOf(raw.skb_attribute_letter_spacing_t));
+    }
 };
 
 pub const AttributeWordSpacing = extern struct {
     kind: AttributeType = .word_spacing,
     spacing: f32 = 0,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeWordSpacing) == @sizeOf(raw.skb_attribute_word_spacing_t));
+    }
 };
 
 pub const AttributeLineHeight = extern struct {
     kind: AttributeType = .line_height,
-    type_: u8 = 0,
+    type_: LineHeight = .normal,
     height: f32 = 0,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeLineHeight) == @sizeOf(raw.skb_attribute_line_height_t));
+    }
 };
 
 pub const AttributeTabStopIncrement = extern struct {
     kind: AttributeType = .tab_stop_increment,
     increment: f32 = 0,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeTabStopIncrement) == @sizeOf(raw.skb_attribute_tab_stop_increment_t));
+    }
+};
+
+pub const AttributeVerticalPadding = extern struct {
+    kind: AttributeType = .vertical_padding,
+    before: f32 = 0,
+    after: f32 = 0,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeVerticalPadding) == @sizeOf(raw.skb_attribute_vertical_padding_t));
+    }
+};
+
+pub const AttributeHorizontalPadding = extern struct {
+    kind: AttributeType = .horizontal_padding,
+    start: f32 = 0,
+    end: f32 = 0,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeHorizontalPadding) == @sizeOf(raw.skb_attribute_horizontal_padding_t));
+    }
+};
+
+pub const AttributeIndentLevel = extern struct {
+    kind: AttributeType = .indent_level,
+    level: i32 = 0,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeIndentLevel) == @sizeOf(raw.skb_attribute_indent_level_t));
+    }
+};
+
+pub const AttributeIndentIncrement = extern struct {
+    kind: AttributeType = .indent_increment,
+    level_increment: f32 = 0,
+    first_line_increment: f32 = 0,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeIndentIncrement) == @sizeOf(raw.skb_attribute_indent_increment_t));
+    }
+};
+
+pub const ListMarkerStyle = enum(u8) {
+    none = raw.SKB_LIST_MARKER_NONE,
+    codepoint = raw.SKB_LIST_MARKER_CODEPOINT,
+    counter_decimal = raw.SKB_LIST_MARKER_COUNTER_DECIMAL,
+    counter_lower_latin = raw.SKB_LIST_MARKER_COUNTER_LOWER_LATIN,
+    counter_upper_latin = raw.SKB_LIST_MARKER_COUNTER_UPPER_LATIN,
+};
+
+pub const AttributeListMarker = extern struct {
+    kind: AttributeType = .list_marker,
+    spacing: f32 = 0,
+    /// only used if style is .codepoint
+    codepoint: u32 = 0,
+    style: ListMarkerStyle = .none,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeListMarker) == @sizeOf(raw.skb_attribute_list_marker_t));
+    }
 };
 
 pub const AttributeTextWrap = extern struct {
     kind: AttributeType = .text_wrap,
     wrap: TextWrap = .word,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeTextWrap) == @sizeOf(raw.skb_attribute_text_wrap_t));
+    }
 };
 
 pub const AttributeTextOverflow = extern struct {
     kind: AttributeType = .text_overflow,
     overflow: TextOverflow = .clip,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeTextOverflow) == @sizeOf(raw.skb_attribute_text_overflow_t));
+    }
 };
 
 pub const AttributeVerticalTrim = extern struct {
     kind: AttributeType = .vertical_trim,
     trim: VerticalTrim = .default,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeVerticalTrim) == @sizeOf(raw.skb_attribute_vertical_trim_t));
+    }
 };
 
 pub const AttributeAlign = extern struct {
     kind: AttributeType = .horizontal_align, // or .vertical_align
     alignment: Align = .left, // or VerticalAlign
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeAlign) == @sizeOf(raw.skb_attribute_align_t));
+    }
 };
 
 pub const AttributeBaselineAlign = extern struct {
     kind: AttributeType = .baseline_align,
     alignment: Baseline = .alphabetic,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeBaselineAlign) == @sizeOf(raw.skb_attribute_baseline_align_t));
+    }
 };
 
 pub const AttributeFill = extern struct {
     kind: AttributeType = .fill,
     color: Color = .rgba(0, 0, 0, 255),
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeFill) == @sizeOf(raw.skb_attribute_fill_t));
+    }
 };
 
 pub const AttributeDecoration = extern struct {
     kind: AttributeType = .decoration,
-    position: u8 = 0,
-    style: u8 = 0,
+    position: DecorationPosition = .underline,
+    style: DecorationStyle = .solid,
     thickness: f32 = 0,
     offset: f32 = 0,
     color: Color = .rgba(0, 0, 0, 255),
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeDecoration) == @sizeOf(raw.skb_attribute_decoration_t));
+    }
 };
 
 pub const AttributeObjectAlign = extern struct {
     kind: AttributeType = .object_align,
     baseline_ratio: f32 = 0,
-    align_ref: u8 = 0,
-    align_baseline: u8 = 0,
+    align_ref: Align = .start,
+    align_baseline: Align = .start,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeObjectAlign) == @sizeOf(raw.skb_attribute_object_align_t));
+    }
 };
 
 pub const AttributeObjectPadding = extern struct {
@@ -1358,11 +1580,19 @@ pub const AttributeObjectPadding = extern struct {
     end: f32 = 0,
     top: f32 = 0,
     bottom: f32 = 0,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeObjectPadding) == @sizeOf(raw.skb_attribute_object_padding_t));
+    }
 };
 
 pub const AttributeReference = extern struct {
     kind: AttributeType = .reference,
     handle: AttributeSetHandle,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeReference) == @sizeOf(raw.skb_attribute_reference_t));
+    }
 };
 
 pub const AttributeType = enum(c_uint) {
@@ -1378,6 +1608,11 @@ pub const AttributeType = enum(c_uint) {
     word_spacing = raw.SKB_ATTRIBUTE_WORD_SPACING,
     line_height = raw.SKB_ATTRIBUTE_LINE_HEIGHT,
     tab_stop_increment = raw.SKB_ATTRIBUTE_TAB_STOP_INCREMENT,
+    vertical_padding = raw.SKB_ATTRIBUTE_VERTICAL_PADDING,
+    horizontal_padding = raw.SKB_ATTRIBUTE_HORIZONTAL_PADDING,
+    indent_level = raw.SKB_ATTRIBUTE_INDENT_LEVEL,
+    indent_increment = raw.SKB_ATTRIBUTE_INDENT_INCREMENT,
+    list_marker = raw.SKB_ATTRIBUTE_LIST_MARKER,
     text_wrap = raw.SKB_ATTRIBUTE_TEXT_WRAP,
     text_overflow = raw.SKB_ATTRIBUTE_TEXT_OVERFLOW,
     vertical_trim = raw.SKB_ATTRIBUTE_VERTICAL_TRIM,
@@ -1405,6 +1640,11 @@ pub const Attribute = extern union {
     word_spacing: AttributeWordSpacing,
     line_height: AttributeLineHeight,
     tab_stop_increment: AttributeTabStopIncrement,
+    vertical_padding: AttributeVerticalPadding,
+    horizontal_padding: AttributeHorizontalPadding,
+    indent_level: AttributeIndentLevel,
+    indent_increment: AttributeIndentIncrement,
+    list_marker: AttributeListMarker,
     text_wrap: AttributeTextWrap,
     text_overflow: AttributeTextOverflow,
     vertical_trim: AttributeVerticalTrim,
@@ -1457,12 +1697,32 @@ pub const Attribute = extern union {
         return .{ .word_spacing = .{ .spacing = spacing } };
     }
 
-    pub fn attrLineHeight(type_: u8, height: f32) Attribute {
+    pub fn attrLineHeight(type_: LineHeight, height: f32) Attribute {
         return .{ .line_height = .{ .type_ = type_, .height = height } };
     }
 
     pub fn attrTabStopIncrement(increment: f32) Attribute {
         return .{ .tab_stop_increment = .{ .increment = increment } };
+    }
+
+    pub fn attrVerticalPadding(before: f32, after: f32) Attribute {
+        return .{ .vertical_padding = .{ .before = before, .after = after } };
+    }
+
+    pub fn attrHorizontalPadding(start: f32, end: f32) Attribute {
+        return .{ .horizontal_padding = .{ .start = start, .end = end } };
+    }
+
+    pub fn attrIndentLevel(level: i32) Attribute {
+        return .{ .indent_level = .{ .level = level } };
+    }
+
+    pub fn attrIndentIncrement(level_increment: f32, first_line_increment: f32) Attribute {
+        return .{ .indent_increment = .{ .level_increment = level_increment, .first_line_increment = first_line_increment } };
+    }
+
+    pub fn attrListMarker(style: ListMarkerStyle, spacing: f32, codepoint: u32) Attribute {
+        return .{ .list_marker = .{ .style = style, .spacing = spacing, .codepoint = codepoint } };
     }
 
     pub fn attrTextWrap(wrap: TextWrap) Attribute {
@@ -1493,7 +1753,13 @@ pub const Attribute = extern union {
         return .{ .fill = .{ .color = color } };
     }
 
-    pub fn attrDecoration(position: u8, style: u8, thickness: f32, offset: f32, color: Color) Attribute {
+    pub fn attrDecoration(
+        position: DecorationPosition,
+        style: DecorationStyle,
+        thickness: f32,
+        offset: f32,
+        color: Color,
+    ) Attribute {
         return .{ .decoration = .{
             .position = position,
             .style = style,
@@ -1503,7 +1769,7 @@ pub const Attribute = extern union {
         } };
     }
 
-    pub fn attrObjectAlign(baseline_ratio: f32, align_ref: u8, align_baseline: u8) Attribute {
+    pub fn attrObjectAlign(baseline_ratio: f32, align_ref: Align, align_baseline: Align) Attribute {
         return .{ .object_align = .{
             .baseline_ratio = baseline_ratio,
             .align_ref = align_ref,
@@ -1525,6 +1791,10 @@ pub const Attribute = extern union {
             @ptrCast(attribute_collection),
             @ptrCast(name.ptr),
         ));
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(Attribute) == @sizeOf(raw.skb_attribute_t));
     }
 };
 
@@ -1706,7 +1976,7 @@ pub const AttributeSet = extern struct {
             @ptrCast(collection),
         );
         return .{
-            .type_ = attr.type,
+            .type_ = @enumFromInt(attr.type),
             .height = attr.height,
         };
     }
@@ -1728,8 +1998,8 @@ pub const AttributeSet = extern struct {
         );
         return .{
             .baseline_ratio = attr.baseline_ratio,
-            .align_ref = attr.align_ref,
-            .align_baseline = attr.align_baseline,
+            .align_ref = @enumFromInt(attr.align_ref),
+            .align_baseline = @enumFromInt(attr.align_baseline),
         };
     }
 
@@ -1751,6 +2021,58 @@ pub const AttributeSet = extern struct {
             @bitCast(self),
             @ptrCast(collection),
         );
+    }
+
+    pub fn getVerticalPadding(self: AttributeSet, collection: *const AttributeCollection) AttributeVerticalPadding {
+        const attr = raw.skb_attributes_get_vertical_padding(
+            @bitCast(self),
+            @ptrCast(collection),
+        );
+        return .{
+            .before = attr.before,
+            .after = attr.after,
+        };
+    }
+
+    pub fn getHorizontalPadding(self: AttributeSet, collection: *const AttributeCollection) AttributeHorizontalPadding {
+        const attr = raw.skb_attributes_get_horizontal_padding(
+            @bitCast(self),
+            @ptrCast(collection),
+        );
+        return .{
+            .start = attr.start,
+            .end = attr.end,
+        };
+    }
+
+    pub fn getIndentLevel(self: AttributeSet, collection: *const AttributeCollection) i32 {
+        return raw.skb_attributes_get_indent_level(
+            @bitCast(self),
+            @ptrCast(collection),
+        );
+    }
+
+    pub fn getIndentIncrement(self: AttributeSet, collection: *const AttributeCollection) AttributeIndentIncrement {
+        const attr = raw.skb_attributes_get_indent_increment(
+            @bitCast(self),
+            @ptrCast(collection),
+        );
+        return .{
+            .level_increment = attr.level_increment,
+            .first_line_increment = attr.first_line_increment,
+        };
+    }
+
+    pub fn getListMarker(self: AttributeSet, collection: *const AttributeCollection) AttributeListMarker {
+        const attr = raw.skb_attributes_get_list_marker(
+            @bitCast(self),
+            @ptrCast(collection),
+        );
+        return .{
+            .style = @enumFromInt(attr.style),
+            .spacing = attr.spacing,
+            .codepoint = attr.codepoint,
+        };
     }
 
     pub fn getTextWrap(self: AttributeSet, collection: *const AttributeCollection) TextWrap {
@@ -1815,6 +2137,10 @@ pub const AttributeSet = extern struct {
             @intCast(dest.len),
         ));
     }
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeSet) == @sizeOf(raw.skb_attribute_set_t));
+    }
 };
 
 // TODO: pub extern fn skb_attributes_hash_append(hash: u64, attributes: skb_attribute_set_t) u64;
@@ -1834,6 +2160,10 @@ pub const ColorStop = extern struct {
             .offset = offset,
             .color = color,
         };
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(ColorStop) == @sizeOf(raw.skb_color_stop_t));
     }
 };
 
@@ -1942,6 +2272,10 @@ pub const max_active_attributes = raw.SKB_MAX_ACTIVE_ATTRIBUTES;
 pub const AttributeSpan = extern struct {
     text_range: Range,
     attribute: Attribute,
+
+    comptime {
+        std.debug.assert(@sizeOf(AttributeSpan) == @sizeOf(raw.skb_attribute_span_t));
+    }
 };
 
 pub const Text = opaque {
@@ -2246,12 +2580,20 @@ pub const IconBuilder = extern struct {
             @intCast(stops.len),
         );
     }
+
+    comptime {
+        std.debug.assert(@sizeOf(IconBuilder) == @sizeOf(raw.skb_icon_builder_t));
+    }
 };
 
 pub const HbLanguageImpl = opaque {};
 pub const HbLanguage = *const HbLanguageImpl;
 
-pub const layout_params_ignore_must_line_breaks = raw.SKB_LAYOUT_PARAMS_IGNORE_MUST_LINE_BREAKS;
+pub const LayoutParamFlags = packed struct(u8) {
+    ignore_must_line_breaks: bool = false,
+    ignore_vertical_align: bool = false,
+    _: u6 = 0,
+};
 
 pub const LayoutParams = extern struct {
     font_collection: ?*FontCollection = null,
@@ -2259,9 +2601,13 @@ pub const LayoutParams = extern struct {
     attribute_collection: ?*AttributeCollection = null,
     layout_width: f32 = 0,
     layout_height: f32 = 0,
-    flags: u8 = 0,
+    flags: LayoutParamFlags = .{},
     layout_attributes: AttributeSet = .{},
-    // TODO: create
+    list_marker_counter: i32 = 0,
+
+    comptime {
+        std.debug.assert(@sizeOf(LayoutParams) == @sizeOf(raw.skb_layout_params_t));
+    }
 };
 
 pub const ContentTextUtf8 = extern struct {
@@ -2287,6 +2633,10 @@ pub const ContentTextUtf8 = extern struct {
             .text = @ptrCast(slice.ptr),
             .text_count = @intCast(slice.len),
         };
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(ContentTextUtf8) == @sizeOf(raw.struct_skb_content_text_utf8_t));
     }
 };
 
@@ -2314,6 +2664,10 @@ pub const ContentTextUtf32 = extern struct {
             .text_count = @intCast(slice.len),
         };
     }
+
+    comptime {
+        std.debug.assert(@sizeOf(ContentTextUtf32) == @sizeOf(raw.struct_skb_content_text_utf32_t));
+    }
 };
 
 pub const ContentObject = extern struct {
@@ -2335,6 +2689,10 @@ pub const ContentObject = extern struct {
             .height = skb.height,
             .data = skb.data,
         };
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(ContentObject) == @sizeOf(raw.struct_skb_content_object_t));
     }
 };
 
@@ -2358,9 +2716,13 @@ pub const ContentIcon = extern struct {
             .icon_handle = @enumFromInt(skb.icon_handle),
         };
     }
+
+    comptime {
+        std.debug.assert(@sizeOf(ContentIcon) == @sizeOf(raw.struct_skb_content_icon_t));
+    }
 };
 
-pub const ContentRunType = enum(c_uint) {
+pub const ContentRunType = enum(u8) {
     utf8 = raw.SKB_CONTENT_RUN_UTF8,
     utf32 = raw.SKB_CONTENT_RUN_UTF32,
     object = raw.SKB_CONTENT_RUN_OBJECT,
@@ -2417,6 +2779,10 @@ pub const ContentRun = extern struct {
             run_id,
         ));
     }
+
+    comptime {
+        std.debug.assert(@sizeOf(ContentRun) == @sizeOf(raw.struct_skb_content_run_t));
+    }
 };
 
 pub const LayoutLineFlags = packed struct(u8) {
@@ -2468,6 +2834,10 @@ pub const LayoutLine = extern struct {
             .flags = @bitCast(skb.flags),
         };
     }
+
+    comptime {
+        std.debug.assert(@sizeOf(LayoutLine) == @sizeOf(raw.struct_skb_layout_line_t));
+    }
 };
 
 pub const LayoutRunData = extern union {
@@ -2477,8 +2847,8 @@ pub const LayoutRunData = extern union {
 };
 
 pub const LayoutRun = extern struct {
-    type: u8,
-    direction: u8,
+    type: ContentRunType,
+    direction: TextDirection,
     script: Script,
     bidi_level: u8,
     content_run_idx: i32,
@@ -2490,6 +2860,10 @@ pub const LayoutRun = extern struct {
     attributes: AttributeSet,
     content_run_id: isize,
     data: LayoutRunData,
+
+    comptime {
+        std.debug.assert(@sizeOf(LayoutRun) == @sizeOf(raw.struct_skb_layout_run_t));
+    }
 };
 
 pub const Cluster = extern struct {
@@ -2514,6 +2888,10 @@ pub const Cluster = extern struct {
             .text_count = skb.text_count,
             .glyphs_count = skb.glyphs_count,
         };
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(Cluster) == @sizeOf(raw.struct_skb_cluster_t));
     }
 };
 
@@ -2543,6 +2921,10 @@ pub const Glyph = extern struct {
             .gid = skb.gid,
         };
     }
+
+    comptime {
+        std.debug.assert(@sizeOf(Glyph) == @sizeOf(raw.struct_skb_glyph_t));
+    }
 };
 
 pub const Decoration = extern struct {
@@ -2554,8 +2936,12 @@ pub const Decoration = extern struct {
     pattern_offset: f32,
     thickness: f32,
     color: Color = .rgba(0, 0, 0, 255),
-    position: u8 = 0,
-    style: u8 = 0,
+    position: DecorationPosition = .underline,
+    style: DecorationStyle = .solid,
+
+    comptime {
+        std.debug.assert(@sizeOf(Decoration) == @sizeOf(raw.struct_skb_decoration_t));
+    }
 };
 
 pub const TextProp = packed struct(u8) {
@@ -2572,6 +2958,10 @@ pub const TextProp = packed struct(u8) {
 pub const TextProperty = extern struct {
     flags: TextProp,
     script: Script,
+
+    comptime {
+        std.debug.assert(@sizeOf(TextProperty) == @sizeOf(raw.struct_skb_text_property_t));
+    }
 };
 
 pub const Layout = opaque {
@@ -2794,20 +3184,24 @@ pub const Layout = opaque {
         return .fromSkb(raw.skb_layout_get_bounds(@ptrCast(self)));
     }
 
+    pub fn getAdvanceY(self: *const Layout) f32 {
+        return raw.skb_layout_get_advance_y(@ptrCast(self));
+    }
+
     pub fn getResolvedDirection(self: *const Layout) TextDirection {
         return @enumFromInt(raw.skb_layout_get_resolved_direction(@ptrCast(self)));
     }
 
-    pub fn nextGraphemeOffset(self: *const Layout, offset: i32) i32 {
-        return @intCast(raw.skb_layout_next_grapheme_offset(@ptrCast(self), @intCast(offset)));
+    pub fn nextGraphemeOffset(self: *const Layout, text_offset: i32) i32 {
+        return @intCast(raw.skb_layout_next_grapheme_offset(@ptrCast(self), @intCast(text_offset)));
     }
 
-    pub fn prevGraphemeOffset(self: *const Layout, offset: i32) i32 {
-        return @intCast(raw.skb_layout_prev_grapheme_offset(@ptrCast(self), @intCast(offset)));
+    pub fn prevGraphemeOffset(self: *const Layout, text_offset: i32) i32 {
+        return @intCast(raw.skb_layout_prev_grapheme_offset(@ptrCast(self), @intCast(text_offset)));
     }
 
-    pub fn alignGraphemeOffset(self: *const Layout, offset: i32) i32 {
-        return @intCast(raw.skb_layout_align_grapheme_offset(@ptrCast(self), @intCast(offset)));
+    pub fn alignGraphemeOffset(self: *const Layout, text_offset: i32) i32 {
+        return @intCast(raw.skb_layout_align_grapheme_offset(@ptrCast(self), @intCast(text_offset)));
     }
 
     pub fn getLineIndex(self: *const Layout, pos: TextPosition) i32 {
@@ -2923,7 +3317,11 @@ pub const VisualCaret = extern struct {
     ascender: f32,
     descender: f32,
     slope: f32,
-    direction: u8,
+    direction: TextDirection,
+
+    comptime {
+        std.debug.assert(@sizeOf(VisualCaret) == @sizeOf(raw.struct_skb_visual_caret_t));
+    }
 };
 
 pub const MovementType = enum(c_uint) {
@@ -2935,6 +3333,10 @@ pub const LayoutContentHit = extern struct {
     run_id: isize,
     line_idx: i32,
     layout_run_idx: i32,
+
+    comptime {
+        std.debug.assert(@sizeOf(LayoutContentHit) == @sizeOf(raw.struct_skb_layout_content_hit_t));
+    }
 };
 
 pub const ContentRectFunc = fn (rect: Rect2, layout_run_idx: i32, line_idx: i32, context: ?*anyopaque) callconv(.c) void;
@@ -2947,7 +3349,11 @@ pub const CaretIteratorResult = extern struct {
     layout_run_idx: i32 = 0,
     glyph_idx: i32 = 0,
     cluster_idx: i32 = 0,
-    direction: u8 = 0,
+    direction: TextDirection = .ltr,
+
+    comptime {
+        std.debug.assert(@sizeOf(CaretIteratorResult) == @sizeOf(raw.struct_skb_caret_iterator_result_t));
+    }
 };
 
 pub const CaretIterator = extern struct {
@@ -2979,6 +3385,10 @@ pub const CaretIterator = extern struct {
             @ptrCast(left),
             @ptrCast(right),
         );
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(CaretIterator) == @sizeOf(raw.struct_skb_caret_iterator_t));
     }
 };
 
@@ -3199,6 +3609,10 @@ pub const RichTextChange = extern struct {
             .inserted_paragraph_count = skb.inserted_paragraph_count,
             .edit_end_position = .fromSkb(skb.edit_end_position),
         };
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(RichTextChange) == @sizeOf(raw.struct_skb_rich_text_change_t));
     }
 };
 
@@ -3539,6 +3953,10 @@ pub const EditorParams = extern struct {
     caret_mode: EditorCaretMode = .skribidi,
     editor_behavior: EditorBehavior = .default,
     max_undo_levels: i32 = 0,
+
+    comptime {
+        std.debug.assert(@sizeOf(EditorParams) == @sizeOf(raw.struct_skb_editor_params_t));
+    }
 };
 
 pub const EditorKey = enum(c_uint) {
@@ -3760,6 +4178,10 @@ pub const RasterizerConfig = extern struct {
             .pixel_dist_scale = skb.pixel_dist_scale,
         };
     }
+
+    comptime {
+        std.debug.assert(@sizeOf(RasterizerConfig) == @sizeOf(raw.struct_skb_rasterizer_config_t));
+    }
 };
 
 pub const RasterizerAlphaMode = enum(c_uint) {
@@ -3927,20 +4349,20 @@ pub const ImageAtlas = opaque {
     }
 };
 
-pub const QuadFlags = packed struct(c_uint) {
+pub const QuadFlags = packed struct(u8) {
     is_color: bool = false,
     is_sdf: bool = false,
 
-    _: u30 = 0,
+    _: u6 = 0,
 
-    pub fn toInt(self: QuadFlags) c_uint {
-        var result: c_uint = 0;
+    pub fn toInt(self: QuadFlags) u8 {
+        var result: u8 = 0;
         if (self.is_color) result |= raw.SKB_QUAD_IS_COLOR;
         if (self.is_sdf) result |= raw.SKB_QUAD_IS_SDF;
         return result;
     }
 
-    pub fn fromInt(value: c_uint) QuadFlags {
+    pub fn fromInt(value: u8) QuadFlags {
         return .{
             .is_color = (value & raw.SKB_QUAD_IS_COLOR) != 0,
             .is_sdf = (value & raw.SKB_QUAD_IS_SDF) != 0,
@@ -3955,7 +4377,35 @@ pub const Quad = extern struct {
     scale: f32 = 0,
     color: Color = .rgba(0, 0, 0, 0),
     texture_idx: u8 = 0,
-    flags: u8 = 0,
+    flags: QuadFlags = .{},
+
+    pub fn toSkb(self: Quad) raw.struct_skb_quad_t {
+        return .{
+            .geom = self.geom.toSkb(),
+            .pattern = self.pattern.toSkb(),
+            .texture = self.texture.toSkb(),
+            .scale = self.scale,
+            .color = self.color.toSkb(),
+            .texture_idx = self.texture_idx,
+            .flags = self.flags.toInt(),
+        };
+    }
+
+    pub fn fromSkb(skb: raw.struct_skb_quad_t) Quad {
+        return .{
+            .geom = Rect2.fromSkb(skb.geom),
+            .pattern = Rect2.fromSkb(skb.pattern),
+            .texture = Rect2.fromSkb(skb.texture),
+            .scale = skb.scale,
+            .color = Color.fromSkb(skb.color),
+            .texture_idx = skb.texture_idx,
+            .flags = .fromInt(skb.flags),
+        };
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(Quad) == @sizeOf(raw.struct_skb_quad_t));
+    }
 };
 
 pub const CreateTextureFunc = fn (atlas: *const ImageAtlas, texture_idx: u8, context: ?*anyopaque) callconv(.c) void;
@@ -3982,6 +4432,10 @@ pub const ImageItemConfig = extern struct {
             .max_size = skb.max_size,
             .padding = skb.padding,
         };
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(ImageItemConfig) == @sizeOf(raw.struct_skb_image_item_config_t));
     }
 };
 
@@ -4055,13 +4509,17 @@ pub const ImageAtlasConfig = extern struct {
             .fit_max_factor = skb.fit_max_factor,
             .evict_inactive_duration = skb.evict_inactive_duration,
             .flags = .fromInt(skb.flags),
-            .glyph_sdf = ImageItemConfig.fromSkb(skb.glyph_sdf),
-            .glyph_alpha = ImageItemConfig.fromSkb(skb.glyph_alpha),
-            .icon_sdf = ImageItemConfig.fromSkb(skb.icon_sdf),
-            .icon_alpha = ImageItemConfig.fromSkb(skb.icon_alpha),
-            .pattern_sdf = ImageItemConfig.fromSkb(skb.pattern_sdf),
-            .pattern_alpha = ImageItemConfig.fromSkb(skb.pattern_alpha),
+            .glyph_sdf = .fromSkb(skb.glyph_sdf),
+            .glyph_alpha = .fromSkb(skb.glyph_alpha),
+            .icon_sdf = .fromSkb(skb.icon_sdf),
+            .icon_alpha = .fromSkb(skb.icon_alpha),
+            .pattern_sdf = .fromSkb(skb.pattern_sdf),
+            .pattern_alpha = .fromSkb(skb.pattern_alpha),
         };
+    }
+
+    comptime {
+        std.debug.assert(@sizeOf(ImageAtlasConfig) == @sizeOf(raw.struct_skb_image_atlas_config_t));
     }
 };
 
@@ -4150,14 +4608,18 @@ pub const RichLayout = opaque {
     }
 
     pub fn getOffsetY(self: *const RichLayout, index: i32) f32 {
-        return raw.skb_rich_layout_get_offset_y(@ptrCast(self), index);
+        return raw.skb_rich_layout_get_layout_offset_y(@ptrCast(self), index);
     }
 
     pub fn getDirection(self: *const RichLayout, index: i32) TextDirection {
         return @enumFromInt(raw.skb_rich_layout_get_direction(@ptrCast(self), index));
     }
 
-    pub fn update(
+    pub fn getBounds(self: *const RichLayout) Rect2 {
+        return .fromSkb(raw.skb_rich_layout_get_bounds(@ptrCast(self)));
+    }
+
+    pub fn setFromRichText(
         self: *RichLayout,
         temp_alloc: *TempAlloc,
         params: *const LayoutParams,
@@ -4165,7 +4627,7 @@ pub const RichLayout = opaque {
         ime_text_offset: i32,
         ime_text: *Text,
     ) void {
-        raw.skb_rich_layout_update(
+        raw.skb_rich_layout_set_from_rich_text(
             @ptrCast(self),
             @ptrCast(temp_alloc),
             @ptrCast(params),
@@ -4175,7 +4637,7 @@ pub const RichLayout = opaque {
         );
     }
 
-    pub fn updateWithChange(
+    pub fn setFromRichTextWithChange(
         self: *RichLayout,
         temp_alloc: *TempAlloc,
         params: *const LayoutParams,
@@ -4184,7 +4646,7 @@ pub const RichLayout = opaque {
         ime_text_offset: i32,
         ime_text: *Text,
     ) void {
-        raw.skb_rich_layout_update_with_change(
+        raw.skb_rich_layout_set_from_rich_text_with_change(
             @ptrCast(self),
             @ptrCast(temp_alloc),
             @ptrCast(params),
@@ -4240,3 +4702,7 @@ pub const AffinityUsage = enum(c_uint) {
     use = raw.SKB_AFFINITY_USE,
     ignore = raw.SKB_AFFINITY_IGNORE,
 };
+
+test {
+    std.testing.refAllDeclsRecursive(@This());
+}
