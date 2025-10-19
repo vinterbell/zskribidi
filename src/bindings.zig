@@ -244,6 +244,14 @@ pub const Color = extern struct {
         return .{ .r = r, .g = g, .b = b, .a = a };
     }
 
+    pub fn rgbaf(rf: f32, gf: f32, bf: f32, af: f32) Color {
+        const r: u8 = @intCast(@trunc(@max(@min(rf * 255.0, 255.0), 0)));
+        const g: u8 = @intCast(@trunc(@max(@min(gf * 255.0, 255.0), 0)));
+        const b: u8 = @intCast(@trunc(@max(@min(bf * 255.0, 255.0), 0)));
+        const a: u8 = @intCast(@trunc(@max(@min(af * 255.0, 255.0), 0)));
+        return .{ .r = r, .g = g, .b = b, .a = a };
+    }
+
     pub fn equals(self: Color, other: Color) bool {
         return raw.skb_color_equals(self.toSkb(), other.toSkb());
     }
@@ -1786,7 +1794,7 @@ pub const Attribute = extern union {
         } };
     }
 
-    pub fn attrReferenceByName(attribute_collection: *const AttributeCollection, name: [:0]const u8) Attribute {
+    pub fn attrReferenceByName(attribute_collection: ?*const AttributeCollection, name: [:0]const u8) Attribute {
         return @bitCast(raw.skb_attribute_make_reference_by_name(
             @ptrCast(attribute_collection),
             @ptrCast(name.ptr),
@@ -1905,14 +1913,14 @@ pub const AttributeSet = extern struct {
         ));
     }
 
-    pub fn getTextDirection(self: AttributeSet, collection: *const AttributeCollection) TextDirection {
+    pub fn getTextDirection(self: AttributeSet, collection: ?*const AttributeCollection) TextDirection {
         return @enumFromInt(raw.skb_attributes_get_text_direction(
             @bitCast(self),
             @ptrCast(collection),
         ));
     }
 
-    pub fn getLang(self: AttributeSet, collection: *const AttributeCollection) ?[:0]const u8 {
+    pub fn getLang(self: AttributeSet, collection: ?*const AttributeCollection) ?[:0]const u8 {
         const lang = raw.skb_attributes_get_lang(
             @bitCast(self),
             @ptrCast(collection),
@@ -1921,56 +1929,56 @@ pub const AttributeSet = extern struct {
         return std.mem.sliceTo(lang, 0);
     }
 
-    pub fn getFontFamily(self: AttributeSet, collection: *const AttributeCollection) FontFamily {
+    pub fn getFontFamily(self: AttributeSet, collection: ?*const AttributeCollection) FontFamily {
         return @enumFromInt(raw.skb_attributes_get_font_family(
             @bitCast(self),
             @ptrCast(collection),
         ));
     }
 
-    pub fn getFontSize(self: AttributeSet, collection: *const AttributeCollection) f32 {
+    pub fn getFontSize(self: AttributeSet, collection: ?*const AttributeCollection) f32 {
         return raw.skb_attributes_get_font_size(
             @bitCast(self),
             @ptrCast(collection),
         );
     }
 
-    pub fn getFontWeight(self: AttributeSet, collection: *const AttributeCollection) Weight {
+    pub fn getFontWeight(self: AttributeSet, collection: ?*const AttributeCollection) Weight {
         return @enumFromInt(raw.skb_attributes_get_font_weight(
             @bitCast(self),
             @ptrCast(collection),
         ));
     }
 
-    pub fn getFontStyle(self: AttributeSet, collection: *const AttributeCollection) Style {
+    pub fn getFontStyle(self: AttributeSet, collection: ?*const AttributeCollection) Style {
         return @enumFromInt(raw.skb_attributes_get_font_style(
             @bitCast(self),
             @ptrCast(collection),
         ));
     }
 
-    pub fn getFontStretch(self: AttributeSet, collection: *const AttributeCollection) Stretch {
+    pub fn getFontStretch(self: AttributeSet, collection: ?*const AttributeCollection) Stretch {
         return @enumFromInt(raw.skb_attributes_get_font_stretch(
             @bitCast(self),
             @ptrCast(collection),
         ));
     }
 
-    pub fn getLetterSpacing(self: AttributeSet, collection: *const AttributeCollection) f32 {
+    pub fn getLetterSpacing(self: AttributeSet, collection: ?*const AttributeCollection) f32 {
         return raw.skb_attributes_get_letter_spacing(
             @bitCast(self),
             @ptrCast(collection),
         );
     }
 
-    pub fn getWordSpacing(self: AttributeSet, collection: *const AttributeCollection) f32 {
+    pub fn getWordSpacing(self: AttributeSet, collection: ?*const AttributeCollection) f32 {
         return raw.skb_attributes_get_word_spacing(
             @bitCast(self),
             @ptrCast(collection),
         );
     }
 
-    pub fn getLineHeight(self: AttributeSet, collection: *const AttributeCollection) AttributeLineHeight {
+    pub fn getLineHeight(self: AttributeSet, collection: ?*const AttributeCollection) AttributeLineHeight {
         const attr = raw.skb_attributes_get_line_height(
             @bitCast(self),
             @ptrCast(collection),
@@ -1981,7 +1989,7 @@ pub const AttributeSet = extern struct {
         };
     }
 
-    pub fn getFill(self: AttributeSet, collection: *const AttributeCollection) AttributeFill {
+    pub fn getFill(self: AttributeSet, collection: ?*const AttributeCollection) AttributeFill {
         const attr = raw.skb_attributes_get_fill(
             @bitCast(self),
             @ptrCast(collection),
@@ -1991,7 +1999,7 @@ pub const AttributeSet = extern struct {
         };
     }
 
-    pub fn getObjectAlign(self: AttributeSet, collection: *const AttributeCollection) AttributeObjectAlign {
+    pub fn getObjectAlign(self: AttributeSet, collection: ?*const AttributeCollection) AttributeObjectAlign {
         const attr = raw.skb_attributes_get_object_align(
             @bitCast(self),
             @ptrCast(collection),
@@ -2003,7 +2011,7 @@ pub const AttributeSet = extern struct {
         };
     }
 
-    pub fn getObjectPadding(self: AttributeSet, collection: *const AttributeCollection) AttributeObjectPadding {
+    pub fn getObjectPadding(self: AttributeSet, collection: ?*const AttributeCollection) AttributeObjectPadding {
         const attr = raw.skb_attributes_get_object_padding(
             @bitCast(self),
             @ptrCast(collection),
@@ -2016,14 +2024,14 @@ pub const AttributeSet = extern struct {
         };
     }
 
-    pub fn getTabStopIncrement(self: AttributeSet, collection: *const AttributeCollection) f32 {
+    pub fn getTabStopIncrement(self: AttributeSet, collection: ?*const AttributeCollection) f32 {
         return raw.skb_attributes_get_tab_stop_increment(
             @bitCast(self),
             @ptrCast(collection),
         );
     }
 
-    pub fn getVerticalPadding(self: AttributeSet, collection: *const AttributeCollection) AttributeVerticalPadding {
+    pub fn getVerticalPadding(self: AttributeSet, collection: ?*const AttributeCollection) AttributeVerticalPadding {
         const attr = raw.skb_attributes_get_vertical_padding(
             @bitCast(self),
             @ptrCast(collection),
@@ -2034,7 +2042,7 @@ pub const AttributeSet = extern struct {
         };
     }
 
-    pub fn getHorizontalPadding(self: AttributeSet, collection: *const AttributeCollection) AttributeHorizontalPadding {
+    pub fn getHorizontalPadding(self: AttributeSet, collection: ?*const AttributeCollection) AttributeHorizontalPadding {
         const attr = raw.skb_attributes_get_horizontal_padding(
             @bitCast(self),
             @ptrCast(collection),
@@ -2045,14 +2053,14 @@ pub const AttributeSet = extern struct {
         };
     }
 
-    pub fn getIndentLevel(self: AttributeSet, collection: *const AttributeCollection) i32 {
+    pub fn getIndentLevel(self: AttributeSet, collection: ?*const AttributeCollection) i32 {
         return raw.skb_attributes_get_indent_level(
             @bitCast(self),
             @ptrCast(collection),
         );
     }
 
-    pub fn getIndentIncrement(self: AttributeSet, collection: *const AttributeCollection) AttributeIndentIncrement {
+    pub fn getIndentIncrement(self: AttributeSet, collection: ?*const AttributeCollection) AttributeIndentIncrement {
         const attr = raw.skb_attributes_get_indent_increment(
             @bitCast(self),
             @ptrCast(collection),
@@ -2063,7 +2071,7 @@ pub const AttributeSet = extern struct {
         };
     }
 
-    pub fn getListMarker(self: AttributeSet, collection: *const AttributeCollection) AttributeListMarker {
+    pub fn getListMarker(self: AttributeSet, collection: ?*const AttributeCollection) AttributeListMarker {
         const attr = raw.skb_attributes_get_list_marker(
             @bitCast(self),
             @ptrCast(collection),
@@ -2075,48 +2083,48 @@ pub const AttributeSet = extern struct {
         };
     }
 
-    pub fn getTextWrap(self: AttributeSet, collection: *const AttributeCollection) TextWrap {
+    pub fn getTextWrap(self: AttributeSet, collection: ?*const AttributeCollection) TextWrap {
         return @enumFromInt(raw.skb_attributes_get_text_wrap(
             @bitCast(self),
             @ptrCast(collection),
         ));
     }
 
-    pub fn getTextOverflow(self: AttributeSet, collection: *const AttributeCollection) TextOverflow {
+    pub fn getTextOverflow(self: AttributeSet, collection: ?*const AttributeCollection) TextOverflow {
         return @enumFromInt(raw.skb_attributes_get_text_overflow(
             @bitCast(self),
             @ptrCast(collection),
         ));
     }
 
-    pub fn getVerticalTrim(self: AttributeSet, collection: *const AttributeCollection) VerticalTrim {
+    pub fn getVerticalTrim(self: AttributeSet, collection: ?*const AttributeCollection) VerticalTrim {
         return @enumFromInt(raw.skb_attributes_get_vertical_trim(
             @bitCast(self),
             @ptrCast(collection),
         ));
     }
 
-    pub fn getHorizontalAlign(self: AttributeSet, collection: *const AttributeCollection) Align {
+    pub fn getHorizontalAlign(self: AttributeSet, collection: ?*const AttributeCollection) Align {
         return @enumFromInt(raw.skb_attributes_get_horizontal_align(
             @bitCast(self),
             @ptrCast(collection),
         ));
     }
 
-    pub fn getVerticalAlign(self: AttributeSet, collection: *const AttributeCollection) Align {
+    pub fn getVerticalAlign(self: AttributeSet, collection: ?*const AttributeCollection) Align {
         return @enumFromInt(raw.skb_attributes_get_vertical_align(
             @bitCast(self),
             @ptrCast(collection),
         ));
     }
-    pub fn getBaselineAlign(self: AttributeSet, collection: *const AttributeCollection) Baseline {
+    pub fn getBaselineAlign(self: AttributeSet, collection: ?*const AttributeCollection) Baseline {
         return @enumFromInt(raw.skb_attributes_get_baseline_align(
             @bitCast(self),
             @ptrCast(collection),
         ));
     }
 
-    pub fn getByKind(self: AttributeSet, collection: *const AttributeCollection, kind: AttributeType, results: []*const Attribute) usize {
+    pub fn getByKind(self: AttributeSet, collection: ?*const AttributeCollection, kind: AttributeType, results: []*const Attribute) usize {
         return @intCast(raw.skb_attributes_get_by_kind(
             @bitCast(self),
             @ptrCast(collection),
@@ -3100,19 +3108,19 @@ pub const Layout = opaque {
         return @ptrCast(raw.skb_layout_get_text_properties(@ptrCast(self)));
     }
 
-    pub fn getLayoutRunsCount(self: *const Layout) usize {
+    pub fn getRunsCount(self: *const Layout) usize {
         return @intCast(raw.skb_layout_get_layout_runs_count(@ptrCast(self)));
     }
 
-    pub fn getLayoutRuns(self: *const Layout) ?[*]const LayoutRun {
+    pub fn getRuns(self: *const Layout) ?[*]const LayoutRun {
         const ptr = raw.skb_layout_get_layout_runs(@ptrCast(self));
         if (ptr == null) return null;
         return @ptrCast(ptr);
     }
 
-    pub fn getLayoutRunsSlice(self: *const Layout) []const LayoutRun {
-        const count = self.getLayoutRunsCount();
-        const ptr = self.getLayoutRuns() orelse return &.{};
+    pub fn getRunsSlice(self: *const Layout) []const LayoutRun {
+        const count = self.getRunsCount();
+        const ptr = self.getRuns() orelse return &.{};
         return ptr[0..count];
     }
 
@@ -4257,7 +4265,7 @@ pub const ImageAtlas = opaque {
     }
 
     pub fn getGlyphQuad(
-        atlas: ?*ImageAtlas,
+        atlas: *ImageAtlas,
         x: f32,
         y: f32,
         pixel_scale: f32,
@@ -4283,7 +4291,7 @@ pub const ImageAtlas = opaque {
     }
 
     pub fn getIconQuad(
-        atlas: ?*ImageAtlas,
+        atlas: *ImageAtlas,
         x: f32,
         y: f32,
         pixel_scale: f32,
@@ -4309,7 +4317,7 @@ pub const ImageAtlas = opaque {
     }
 
     pub fn getDecorationQuad(
-        atlas: ?*ImageAtlas,
+        atlas: *ImageAtlas,
         x: f32,
         y: f32,
         pixel_scale: f32,
@@ -4408,7 +4416,7 @@ pub const Quad = extern struct {
     }
 };
 
-pub const CreateTextureFunc = fn (atlas: *const ImageAtlas, texture_idx: u8, context: ?*anyopaque) callconv(.c) void;
+pub const CreateTextureFunc = fn (atlas: *ImageAtlas, texture_idx: u8, context: ?*anyopaque) callconv(.c) void;
 
 pub const ImageItemConfig = extern struct {
     rounding: f32 = 0,

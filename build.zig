@@ -158,4 +158,46 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_mod_tests.step);
+
+    const is_root_project = b.pkg_hash.len == 0;
+    if (is_root_project) {
+        const example_step = b.step("example", "Run example");
+        example_step.dependOn(b.getInstallStep());
+
+        _ = b.lazyDependency("zigglgen", .{}) orelse return;
+        const gl_bindings = @import("zigglgen").generateBindingsModule(b, .{
+            .api = .gl,
+            .version = .@"4.1",
+            .profile = .core,
+            .extensions = &.{},
+        });
+
+        const zglfw = b.lazyDependency("zglfw", .{}) orelse return;
+
+        const example_root = b.addModule("example", .{
+            .root_source_file = b.path("example/main.zig"),
+            .target = target,
+            .imports = &.{
+                .{ .name = "zskribidi", .module = mod },
+                .{ .name = "gl", .module = gl_bindings },
+                .{ .name = "glfw", .module = zglfw.module("root") },
+            },
+            .optimize = optimize,
+            .link_libc = true,
+        });
+        if (target.result.os.tag != .emscripten) {
+            example_root.linkLibrary(zglfw.artifact("glfw"));
+        }
+
+        const example = b.addExecutable(.{
+            .name = "example",
+            .root_module = example_root,
+        });
+
+        b.installArtifact(example);
+
+        const run_example = b.addRunArtifact(example);
+        run_example.setCwd(upstream.path("example"));
+        example_step.dependOn(&run_example.step);
+    }
 }

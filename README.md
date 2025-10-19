@@ -14,10 +14,17 @@ zig build
 zig build test
 ```
 
+## Running example
+```sh
+zig build example
+```
+
+Displays some text in latin, non-latin and emojis which adapts the layout based on the window size.
+
 ## TODO
 - [X] Create zigified bindings
 - [ ] Port tests to zig (some done now)
-- [ ] Port examples to zig
+- [ ] Port examples to zig (basic example done)
 
 ## License
 Skribidi is MIT licensed, the code in this repository is also MIT licensed.
